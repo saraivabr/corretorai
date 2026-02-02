@@ -95,7 +95,7 @@ export function gerarPromptQualificacao(lead: Lead): string {
     `O lead "${lead.nome}" ainda não está totalmente qualificado.`,
     `Perguntas pendentes: ${perguntasPendentes.join(", ")}.`,
     `Próxima pergunta sugerida: "${proxima.pergunta}"`,
-    proxima.opcoes ? `Opções: ${proxima.opcoes.join(", ")}` : "",
+    "opcoes" in proxima && proxima.opcoes ? `Opções: ${proxima.opcoes.join(", ")}` : "",
     "Faça a pergunta de forma natural na conversa.",
   ]
     .filter(Boolean)

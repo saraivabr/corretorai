@@ -8,10 +8,10 @@ export * from "./types.browser.js";
 export * from "./types.channels.js";
 export * from "./types.clawdbot.js";
 export * from "./types.cron.js";
-// export * from "./types.discord.js"; // removido — canal não usado
+export * from "./types.discord.js";
 export * from "./types.gateway.js";
 export * from "./types.hooks.js";
-// export * from "./types.imessage.js"; // removido — canal não usado
+export * from "./types.imessage.js";
 export * from "./types.messages.js";
 export * from "./types.models.js";
 export * from "./types.node-host.js";
@@ -19,10 +19,10 @@ export * from "./types.msteams.js";
 export * from "./types.plugins.js";
 export * from "./types.queue.js";
 export * from "./types.sandbox.js";
-// export * from "./types.signal.js"; // removido — canal não usado
+export * from "./types.signal.js";
 export * from "./types.skills.js";
-// export * from "./types.slack.js"; // removido — canal não usado
-// export * from "./types.telegram.js"; // removido — canal não usado
+export * from "./types.slack.js";
+export * from "./types.telegram.js";
 export * from "./types.tts.js";
 export * from "./types.tools.js";
 export * from "./types.whatsapp.js";
