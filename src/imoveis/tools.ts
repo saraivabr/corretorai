@@ -1,9 +1,11 @@
 /**
  * Agent tools para gestão de imóveis no CorretorAI.
- * Registrados como tools do agente AI para uso via chat.
+ * Compatível com o formato AnyAgentTool do pi-agent-core.
  */
 import { Type } from "@sinclair/typebox";
 
+import type { AnyAgentTool } from "../agents/tools/common.js";
+import { jsonResult } from "../agents/tools/common.js";
 import { resolveStateDir } from "../config/paths.js";
 import { ImoveisStore } from "./store.js";
 import { formatarPreco, formatarArea, resumoImovel } from "./schema.js";
@@ -14,12 +16,13 @@ function getStore(): ImoveisStore {
   return new ImoveisStore(dbPath);
 }
 
-export function createImovelCadastrarTool() {
+export function createImovelCadastrarTool(): AnyAgentTool {
   return {
+    label: "Cadastrar Imóvel",
     name: "imovel_cadastrar",
     description:
       "Cadastrar um novo imóvel no catálogo. Informe tipo, título, cidade, estado, negócio (venda/aluguel) e opcionalmente: preço, quartos, área, bairro, etc.",
-    inputSchema: Type.Object({
+    parameters: Type.Object({
       tipo: Type.String({ description: "Tipo: apartamento, casa, terreno, sala_comercial, loja, galpao, cobertura, kitnet, chacara, fazenda" }),
       negocio: Type.String({ description: "Tipo de negócio: venda, aluguel, venda_aluguel" }),
       titulo: Type.String({ description: "Título descritivo do imóvel" }),
@@ -39,7 +42,8 @@ export function createImovelCadastrarTool() {
       precoIptu: Type.Optional(Type.Number({ description: "IPTU anual em centavos" })),
       amenidades: Type.Optional(Type.String({ description: "Amenidades separadas por vírgula" })),
     }),
-    async execute(input: Record<string, unknown>): Promise<string> {
+    execute: async (_toolCallId, args) => {
+      const input = args as Record<string, unknown>;
       const store = getStore();
       try {
         const imovel = store.criar({
@@ -67,7 +71,7 @@ export function createImovelCadastrarTool() {
             ? (input.amenidades as string).split(",").map((a) => a.trim())
             : undefined,
         });
-        return `Imóvel cadastrado com sucesso!\nID: ${imovel.id}\n${resumoImovel(imovel)}`;
+        return jsonResult(`Imóvel cadastrado com sucesso!\nID: ${imovel.id}\n${resumoImovel(imovel)}`);
       } finally {
         store.close();
       }
@@ -75,12 +79,13 @@ export function createImovelCadastrarTool() {
   };
 }
 
-export function createImovelBuscarTool() {
+export function createImovelBuscarTool(): AnyAgentTool {
   return {
+    label: "Buscar Imóveis",
     name: "imovel_buscar",
     description:
       "Buscar imóveis no catálogo por critérios: tipo, cidade, bairro, faixa de preço, quartos, área, texto livre, etc.",
-    inputSchema: Type.Object({
+    parameters: Type.Object({
       tipo: Type.Optional(Type.String({ description: "Tipo(s) separados por vírgula" })),
       negocio: Type.Optional(Type.String({ description: "venda, aluguel" })),
       cidade: Type.Optional(Type.String()),
@@ -95,7 +100,8 @@ export function createImovelBuscarTool() {
       areaUtilMax: Type.Optional(Type.Number()),
       texto: Type.Optional(Type.String({ description: "Busca por texto livre no título, descrição ou bairro" })),
     }),
-    async execute(input: Record<string, unknown>): Promise<string> {
+    execute: async (_toolCallId, args) => {
+      const input = args as Record<string, unknown>;
       const store = getStore();
       try {
         const criterios: CriteriosBusca = {
@@ -117,13 +123,13 @@ export function createImovelBuscarTool() {
         };
         const resultados = store.buscar(criterios);
         if (resultados.length === 0) {
-          return "Nenhum imóvel encontrado com esses critérios.";
+          return jsonResult("Nenhum imóvel encontrado com esses critérios.");
         }
         const linhas = resultados.map(
           (im, i) =>
             `${i + 1}. ${resumoImovel(im)}${im.endereco.bairro ? ` — ${im.endereco.bairro}` : ""}`,
         );
-        return `Encontrados ${resultados.length} imóvel(is):\n\n${linhas.join("\n")}`;
+        return jsonResult(`Encontrados ${resultados.length} imóvel(is):\n\n${linhas.join("\n")}`);
       } finally {
         store.close();
       }
@@ -131,18 +137,20 @@ export function createImovelBuscarTool() {
   };
 }
 
-export function createImovelDetalhesTool() {
+export function createImovelDetalhesTool(): AnyAgentTool {
   return {
+    label: "Detalhes Imóvel",
     name: "imovel_detalhes",
     description: "Exibir detalhes completos de um imóvel pelo ID.",
-    inputSchema: Type.Object({
+    parameters: Type.Object({
       id: Type.String({ description: "ID do imóvel" }),
     }),
-    async execute(input: { id: string }): Promise<string> {
+    execute: async (_toolCallId, args) => {
+      const input = args as { id: string };
       const store = getStore();
       try {
         const im = store.buscarPorId(input.id);
-        if (!im) return "Imóvel não encontrado.";
+        if (!im) return jsonResult("Imóvel não encontrado.");
         const linhas: string[] = [
           `# ${im.titulo}`,
           `**Tipo:** ${im.tipo} | **Negócio:** ${im.negocio} | **Status:** ${im.status}`,
@@ -175,7 +183,7 @@ export function createImovelDetalhesTool() {
           im.corretorNome ? `\n**Corretor:** ${im.corretorNome}${im.corretorCreci ? ` (CRECI: ${im.corretorCreci})` : ""}` : "",
           `\nID: ${im.id}`,
         ];
-        return linhas.filter(Boolean).join("\n");
+        return jsonResult(linhas.filter(Boolean).join("\n"));
       } finally {
         store.close();
       }
@@ -183,12 +191,13 @@ export function createImovelDetalhesTool() {
   };
 }
 
-export function createImovelAtualizarTool() {
+export function createImovelAtualizarTool(): AnyAgentTool {
   return {
+    label: "Atualizar Imóvel",
     name: "imovel_atualizar",
     description:
       "Atualizar dados de um imóvel existente (preço, status, descrição, etc.).",
-    inputSchema: Type.Object({
+    parameters: Type.Object({
       id: Type.String({ description: "ID do imóvel" }),
       preco: Type.Optional(Type.Number({ description: "Novo preço em centavos" })),
       status: Type.Optional(Type.String({ description: "Novo status: disponivel, reservado, vendido, alugado, inativo" })),
@@ -197,7 +206,8 @@ export function createImovelAtualizarTool() {
       quartos: Type.Optional(Type.Number()),
       bairro: Type.Optional(Type.String()),
     }),
-    async execute(input: Record<string, unknown>): Promise<string> {
+    execute: async (_toolCallId, args) => {
+      const input = args as Record<string, unknown>;
       const store = getStore();
       try {
         const { id, ...dados } = input;
@@ -209,8 +219,8 @@ export function createImovelAtualizarTool() {
           ...(dados.quartos != null ? { quartos: dados.quartos as number } : {}),
           ...(dados.bairro ? { endereco: { cidade: "", estado: "", bairro: dados.bairro as string } } : {}),
         });
-        if (!atualizado) return "Imóvel não encontrado.";
-        return `Imóvel atualizado: ${resumoImovel(atualizado)}`;
+        if (!atualizado) return jsonResult("Imóvel não encontrado.");
+        return jsonResult(`Imóvel atualizado: ${resumoImovel(atualizado)}`);
       } finally {
         store.close();
       }
@@ -218,16 +228,18 @@ export function createImovelAtualizarTool() {
   };
 }
 
-export function createImovelListarTool() {
+export function createImovelListarTool(): AnyAgentTool {
   return {
+    label: "Listar Imóveis",
     name: "imovel_listar",
     description: "Listar imóveis do catálogo com filtros opcionais de status e tipo.",
-    inputSchema: Type.Object({
+    parameters: Type.Object({
       status: Type.Optional(Type.String({ description: "Filtrar por status" })),
       tipo: Type.Optional(Type.String({ description: "Filtrar por tipo" })),
       limite: Type.Optional(Type.Number({ description: "Número máximo de resultados (padrão: 20)" })),
     }),
-    async execute(input: Record<string, unknown>): Promise<string> {
+    execute: async (_toolCallId, args) => {
+      const input = args as Record<string, unknown>;
       const store = getStore();
       try {
         const imoveis = store.listar({
@@ -235,9 +247,9 @@ export function createImovelListarTool() {
           tipo: (input.tipo as TipoImovel) ?? undefined,
           limite: (input.limite as number) ?? 20,
         });
-        if (imoveis.length === 0) return "Nenhum imóvel encontrado.";
+        if (imoveis.length === 0) return jsonResult("Nenhum imóvel encontrado.");
         const linhas = imoveis.map((im, i) => `${i + 1}. ${resumoImovel(im)}`);
-        return `${imoveis.length} imóvel(is):\n\n${linhas.join("\n")}`;
+        return jsonResult(`${imoveis.length} imóvel(is):\n\n${linhas.join("\n")}`);
       } finally {
         store.close();
       }
@@ -246,7 +258,7 @@ export function createImovelListarTool() {
 }
 
 /** Retorna todos os tools de imóveis para registro no agente. */
-export function createImoveisTools() {
+export function createImoveisTools(): AnyAgentTool[] {
   return [
     createImovelCadastrarTool(),
     createImovelBuscarTool(),

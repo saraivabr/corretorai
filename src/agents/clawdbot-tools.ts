@@ -160,8 +160,8 @@ export function createCorretorAITools(options?: {
   });
 
   // Tools imobiliários e CRM do CorretorAI
-  const imoveisTools = createImoveisTools() as AnyAgentTool[];
-  const crmTools = createCrmTools() as AnyAgentTool[];
+  const imoveisTools = createImoveisTools();
+  const crmTools = createCrmTools();
 
   return [...tools, ...imoveisTools, ...crmTools, ...pluginTools];
 }

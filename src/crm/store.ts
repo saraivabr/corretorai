@@ -158,7 +158,7 @@ export class CrmStore {
     const row = leadToRow(lead);
     const cols = Object.keys(row);
     const sql = `INSERT INTO leads (${cols.join(", ")}) VALUES (${cols.map(() => "?").join(", ")})`;
-    this.db.prepare(sql).run(...Object.values(row));
+    this.db.prepare(sql).run(...(Object.values(row) as (string | number | null)[]));
     return lead;
   }
 
@@ -197,7 +197,7 @@ export class CrmStore {
     params.push(limite);
     const rows = this.db
       .prepare(`SELECT * FROM leads ${whereClause} ORDER BY atualizado_em DESC LIMIT ?`)
-      .all(...params) as Record<string, unknown>[];
+      .all(...(params as (string | number | null)[])) as Record<string, unknown>[];
     return rows.map(leadFromRow);
   }
 
@@ -220,7 +220,7 @@ export class CrmStore {
       .filter(([k]) => k !== "id")
       .map(([, v]) => v);
     values.push(id);
-    this.db.prepare(`UPDATE leads SET ${sets.join(", ")} WHERE id = ?`).run(...values);
+    this.db.prepare(`UPDATE leads SET ${sets.join(", ")} WHERE id = ?`).run(...(values as (string | number | null)[]));
     return atualizado;
   }
 
@@ -294,7 +294,7 @@ export class CrmStore {
     const row = visitaToRow(visita);
     const cols = Object.keys(row);
     const sql = `INSERT INTO visitas (${cols.join(", ")}) VALUES (${cols.map(() => "?").join(", ")})`;
-    this.db.prepare(sql).run(...Object.values(row));
+    this.db.prepare(sql).run(...(Object.values(row) as (string | number | null)[]));
     return visita;
   }
 
@@ -340,7 +340,7 @@ export class CrmStore {
     params.push(limite);
     const rows = this.db
       .prepare(`SELECT * FROM visitas ${whereClause} ORDER BY data_hora ASC LIMIT ?`)
-      .all(...params) as Record<string, unknown>[];
+      .all(...(params as (string | number | null)[])) as Record<string, unknown>[];
     return rows.map(visitaFromRow);
   }
 
@@ -363,7 +363,7 @@ export class CrmStore {
       .filter(([k]) => k !== "id")
       .map(([, v]) => v);
     values.push(id);
-    this.db.prepare(`UPDATE visitas SET ${sets.join(", ")} WHERE id = ?`).run(...values);
+    this.db.prepare(`UPDATE visitas SET ${sets.join(", ")} WHERE id = ?`).run(...(values as (string | number | null)[]));
     return atualizada;
   }
 

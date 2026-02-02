@@ -167,7 +167,7 @@ export class ImoveisStore {
     const cols = Object.keys(row);
     const placeholders = cols.map(() => "?").join(", ");
     const sql = `INSERT INTO imoveis (${cols.join(", ")}) VALUES (${placeholders})`;
-    this.db.prepare(sql).run(...Object.values(row));
+    this.db.prepare(sql).run(...(Object.values(row) as (string | number | null)[]));
     return imovel;
   }
 
@@ -192,7 +192,7 @@ export class ImoveisStore {
     const limite = filtros?.limite ?? 50;
     const sql = `SELECT * FROM imoveis ${whereClause} ORDER BY atualizado_em DESC LIMIT ?`;
     params.push(limite);
-    const rows = this.db.prepare(sql).all(...params) as Record<string, unknown>[];
+    const rows = this.db.prepare(sql).all(...(params as (string | number | null)[])) as Record<string, unknown>[];
     return rows.map(fromRow);
   }
 
@@ -260,7 +260,7 @@ export class ImoveisStore {
 
     const whereClause = where.length > 0 ? `WHERE ${where.join(" AND ")}` : "";
     const sql = `SELECT * FROM imoveis ${whereClause} ORDER BY atualizado_em DESC LIMIT 50`;
-    const rows = this.db.prepare(sql).all(...params) as Record<string, unknown>[];
+    const rows = this.db.prepare(sql).all(...(params as (string | number | null)[])) as Record<string, unknown>[];
     return rows.map(fromRow);
   }
 
@@ -285,7 +285,7 @@ export class ImoveisStore {
       .filter(([k]) => k !== "id")
       .map(([, v]) => v);
     values.push(id);
-    this.db.prepare(`UPDATE imoveis SET ${sets.join(", ")} WHERE id = ?`).run(...values);
+    this.db.prepare(`UPDATE imoveis SET ${sets.join(", ")} WHERE id = ?`).run(...(values as (string | number | null)[]));
     return atualizado;
   }
 

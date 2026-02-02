@@ -1,12 +1,15 @@
 /**
  * Agent tools para gestão de leads/CRM no CorretorAI.
+ * Compatível com o formato AnyAgentTool do pi-agent-core.
  */
 import { Type } from "@sinclair/typebox";
 
+import type { AnyAgentTool } from "../agents/tools/common.js";
+import { jsonResult } from "../agents/tools/common.js";
 import { resolveStateDir } from "../config/paths.js";
 import { CrmStore } from "./store.js";
 import { resumoLead } from "./schema.js";
-import type { Lead, OrigemLead, StatusLead } from "./schema.js";
+import type { OrigemLead, StatusLead } from "./schema.js";
 import { transicaoValida } from "./schema.js";
 import { resumoVisita } from "./visita-schema.js";
 
@@ -15,11 +18,12 @@ function getStore(): CrmStore {
   return new CrmStore(dbPath);
 }
 
-export function createLeadCriarTool() {
+export function createLeadCriarTool(): AnyAgentTool {
   return {
+    label: "Criar Lead",
     name: "lead_criar",
     description: "Criar um novo lead/contato no CRM.",
-    inputSchema: Type.Object({
+    parameters: Type.Object({
       nome: Type.String({ description: "Nome do lead" }),
       telefone: Type.Optional(Type.String({ description: "Telefone" })),
       email: Type.Optional(Type.String({ description: "E-mail" })),
@@ -30,7 +34,8 @@ export function createLeadCriarTool() {
       interesse_negocio: Type.Optional(Type.String({ description: "venda, aluguel, ambos" })),
       observacoes: Type.Optional(Type.String()),
     }),
-    async execute(input: Record<string, unknown>): Promise<string> {
+    execute: async (_toolCallId, args) => {
+      const input = args as Record<string, unknown>;
       const store = getStore();
       try {
         const lead = store.criarLead({
@@ -51,7 +56,7 @@ export function createLeadCriarTool() {
           },
           observacoes: (input.observacoes as string) ?? undefined,
         });
-        return `Lead criado com sucesso!\nID: ${lead.id}\n${resumoLead(lead)}`;
+        return jsonResult(`Lead criado com sucesso!\nID: ${lead.id}\n${resumoLead(lead)}`);
       } finally {
         store.close();
       }
@@ -59,32 +64,34 @@ export function createLeadCriarTool() {
   };
 }
 
-export function createLeadBuscarTool() {
+export function createLeadBuscarTool(): AnyAgentTool {
   return {
+    label: "Buscar Leads",
     name: "lead_buscar",
     description: "Buscar lead por telefone ou listar leads com filtros.",
-    inputSchema: Type.Object({
+    parameters: Type.Object({
       telefone: Type.Optional(Type.String({ description: "Buscar por telefone" })),
       status: Type.Optional(Type.String({ description: "Filtrar por status do pipeline" })),
       origem: Type.Optional(Type.String({ description: "Filtrar por origem" })),
       limite: Type.Optional(Type.Number()),
     }),
-    async execute(input: Record<string, unknown>): Promise<string> {
+    execute: async (_toolCallId, args) => {
+      const input = args as Record<string, unknown>;
       const store = getStore();
       try {
         if (input.telefone) {
           const lead = store.buscarLeadPorTelefone(input.telefone as string);
-          if (!lead) return "Lead não encontrado com esse telefone.";
-          return `Lead encontrado:\n${resumoLead(lead)}\nID: ${lead.id}`;
+          if (!lead) return jsonResult("Lead não encontrado com esse telefone.");
+          return jsonResult(`Lead encontrado:\n${resumoLead(lead)}\nID: ${lead.id}`);
         }
         const leads = store.listarLeads({
           status: (input.status as StatusLead) ?? undefined,
           origem: (input.origem as OrigemLead) ?? undefined,
           limite: (input.limite as number) ?? 20,
         });
-        if (leads.length === 0) return "Nenhum lead encontrado.";
+        if (leads.length === 0) return jsonResult("Nenhum lead encontrado.");
         const linhas = leads.map((l, i) => `${i + 1}. ${resumoLead(l)} — ID: ${l.id}`);
-        return `${leads.length} lead(s):\n\n${linhas.join("\n")}`;
+        return jsonResult(`${leads.length} lead(s):\n\n${linhas.join("\n")}`);
       } finally {
         store.close();
       }
@@ -92,26 +99,30 @@ export function createLeadBuscarTool() {
   };
 }
 
-export function createLeadAtualizarStatusTool() {
+export function createLeadAtualizarStatusTool(): AnyAgentTool {
   return {
+    label: "Atualizar Status Lead",
     name: "lead_atualizar_status",
     description:
       "Atualizar o status de um lead no pipeline de vendas. Transições: novo→contato_inicial→qualificado→visita_agendada→proposta→negociacao→fechado_ganho/perdido.",
-    inputSchema: Type.Object({
+    parameters: Type.Object({
       id: Type.String({ description: "ID do lead" }),
       status: Type.String({ description: "Novo status" }),
       motivo_perda: Type.Optional(Type.String({ description: "Motivo da perda (se fechado_perdido)" })),
       observacoes: Type.Optional(Type.String()),
     }),
-    async execute(input: Record<string, unknown>): Promise<string> {
+    execute: async (_toolCallId, args) => {
+      const input = args as Record<string, unknown>;
       const store = getStore();
       try {
         const lead = store.buscarLeadPorId(input.id as string);
-        if (!lead) return "Lead não encontrado.";
+        if (!lead) return jsonResult("Lead não encontrado.");
 
         const novoStatus = input.status as StatusLead;
         if (!transicaoValida(lead.status, novoStatus)) {
-          return `Transição inválida: ${lead.status} → ${novoStatus}. Transições permitidas a partir de "${lead.status}": ${["novo", "contato_inicial", "qualificado", "visita_agendada", "proposta", "negociacao", "fechado_ganho", "fechado_perdido"].join(", ")}`;
+          return jsonResult(
+            `Transição inválida: ${lead.status} → ${novoStatus}. Transições permitidas a partir de "${lead.status}": consulte o pipeline.`,
+          );
         }
 
         const atualizado = store.atualizarLead(input.id as string, {
@@ -120,8 +131,8 @@ export function createLeadAtualizarStatusTool() {
           observacoes: (input.observacoes as string) ?? lead.observacoes,
         });
         return atualizado
-          ? `Status atualizado: ${resumoLead(atualizado)}`
-          : "Erro ao atualizar lead.";
+          ? jsonResult(`Status atualizado: ${resumoLead(atualizado)}`)
+          : jsonResult("Erro ao atualizar lead.");
       } finally {
         store.close();
       }
@@ -129,35 +140,37 @@ export function createLeadAtualizarStatusTool() {
   };
 }
 
-export function createLeadFollowupTool() {
+export function createLeadFollowupTool(): AnyAgentTool {
   return {
+    label: "Follow-up Leads",
     name: "lead_followup",
     description: "Agendar follow-up para um lead ou listar leads com follow-up pendente.",
-    inputSchema: Type.Object({
+    parameters: Type.Object({
       acao: Type.String({ description: "'agendar' para agendar follow-up, 'listar' para ver pendentes" }),
       id: Type.Optional(Type.String({ description: "ID do lead (para agendar)" })),
       data: Type.Optional(Type.String({ description: "Data/hora do follow-up (ISO 8601)" })),
     }),
-    async execute(input: Record<string, unknown>): Promise<string> {
+    execute: async (_toolCallId, args) => {
+      const input = args as Record<string, unknown>;
       const store = getStore();
       try {
         if (input.acao === "listar") {
           const pendentes = store.leadsParaFollowup();
-          if (pendentes.length === 0) return "Nenhum follow-up pendente.";
+          if (pendentes.length === 0) return jsonResult("Nenhum follow-up pendente.");
           const linhas = pendentes.map(
             (l) => `- ${l.nome} (${l.telefone ?? "sem tel"}) — Follow-up: ${l.dataProximoFollowup}`,
           );
-          return `${pendentes.length} follow-up(s) pendente(s):\n\n${linhas.join("\n")}`;
+          return jsonResult(`${pendentes.length} follow-up(s) pendente(s):\n\n${linhas.join("\n")}`);
         }
         if (input.acao === "agendar" && input.id && input.data) {
           const atualizado = store.atualizarLead(input.id as string, {
             dataProximoFollowup: input.data as string,
           });
           return atualizado
-            ? `Follow-up agendado para ${atualizado.nome} em ${input.data}`
-            : "Lead não encontrado.";
+            ? jsonResult(`Follow-up agendado para ${atualizado.nome} em ${input.data}`)
+            : jsonResult("Lead não encontrado.");
         }
-        return "Uso: acao='agendar' com id e data, ou acao='listar'.";
+        return jsonResult("Uso: acao='agendar' com id e data, ou acao='listar'.");
       } finally {
         store.close();
       }
@@ -165,17 +178,19 @@ export function createLeadFollowupTool() {
   };
 }
 
-export function createVisitaCriarTool() {
+export function createVisitaCriarTool(): AnyAgentTool {
   return {
+    label: "Criar Visita",
     name: "visita_criar",
     description: "Agendar uma visita a um imóvel para um lead.",
-    inputSchema: Type.Object({
+    parameters: Type.Object({
       lead_id: Type.String({ description: "ID do lead" }),
       imovel_id: Type.String({ description: "ID do imóvel" }),
       data_hora: Type.String({ description: "Data e hora da visita (ISO 8601)" }),
       observacoes: Type.Optional(Type.String()),
     }),
-    async execute(input: Record<string, unknown>): Promise<string> {
+    execute: async (_toolCallId, args) => {
+      const input = args as Record<string, unknown>;
       const store = getStore();
       try {
         const visita = store.criarVisita({
@@ -185,7 +200,7 @@ export function createVisitaCriarTool() {
           status: "agendada",
           observacoes: (input.observacoes as string) ?? undefined,
         });
-        return `Visita agendada!\n${resumoVisita(visita)}\nID: ${visita.id}`;
+        return jsonResult(`Visita agendada!\n${resumoVisita(visita)}\nID: ${visita.id}`);
       } finally {
         store.close();
       }
@@ -193,16 +208,18 @@ export function createVisitaCriarTool() {
   };
 }
 
-export function createVisitaListarTool() {
+export function createVisitaListarTool(): AnyAgentTool {
   return {
+    label: "Listar Visitas",
     name: "visita_listar",
     description: "Listar visitas agendadas (hoje, por lead ou por imóvel).",
-    inputSchema: Type.Object({
+    parameters: Type.Object({
       lead_id: Type.Optional(Type.String()),
       imovel_id: Type.Optional(Type.String()),
       hoje: Type.Optional(Type.Boolean({ description: "Listar apenas visitas de hoje" })),
     }),
-    async execute(input: Record<string, unknown>): Promise<string> {
+    execute: async (_toolCallId, args) => {
+      const input = args as Record<string, unknown>;
       const store = getStore();
       try {
         const visitas = input.hoje
@@ -211,9 +228,9 @@ export function createVisitaListarTool() {
               leadId: (input.lead_id as string) ?? undefined,
               imovelId: (input.imovel_id as string) ?? undefined,
             });
-        if (visitas.length === 0) return "Nenhuma visita encontrada.";
+        if (visitas.length === 0) return jsonResult("Nenhuma visita encontrada.");
         const linhas = visitas.map((v) => `- ${resumoVisita(v)}`);
-        return `${visitas.length} visita(s):\n\n${linhas.join("\n")}`;
+        return jsonResult(`${visitas.length} visita(s):\n\n${linhas.join("\n")}`);
       } finally {
         store.close();
       }
@@ -221,19 +238,19 @@ export function createVisitaListarTool() {
   };
 }
 
-export function createDashboardTool() {
+export function createDashboardTool(): AnyAgentTool {
   return {
+    label: "Dashboard",
     name: "dashboard",
     description: "Exibir resumo do dashboard: total de leads, imóveis, visitas de hoje, pipeline.",
-    inputSchema: Type.Object({}),
-    async execute(): Promise<string> {
+    parameters: Type.Object({}),
+    execute: async (_toolCallId, _args) => {
       const store = getStore();
       try {
         const leadsPorStatus = store.contarLeadsPorStatus();
         const visitasHoje = store.visitasHoje();
         const totalLeads = Object.values(leadsPorStatus).reduce((a, b) => a + b, 0);
 
-        // Para imóveis, precisamos abrir outro store
         const { ImoveisStore } = await import("../imoveis/store.js");
         const imStore = new ImoveisStore(`${resolveStateDir()}/data/corretorai.db`);
         const imoveisPorStatus = imStore.contarPorStatus();
@@ -254,7 +271,7 @@ export function createDashboardTool() {
           "## Imóveis por Status",
           ...Object.entries(imoveisPorStatus).map(([status, count]) => `  - ${status}: ${count}`),
         ];
-        return linhas.join("\n");
+        return jsonResult(linhas.join("\n"));
       } finally {
         store.close();
       }
@@ -263,7 +280,7 @@ export function createDashboardTool() {
 }
 
 /** Retorna todos os tools CRM para registro no agente. */
-export function createCrmTools() {
+export function createCrmTools(): AnyAgentTool[] {
   return [
     createLeadCriarTool(),
     createLeadBuscarTool(),
