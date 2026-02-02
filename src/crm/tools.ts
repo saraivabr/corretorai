@@ -167,7 +167,7 @@ export function createLeadFollowupTool(): AnyAgentTool {
             dataProximoFollowup: input.data as string,
           });
           return atualizado
-            ? jsonResult(`Follow-up agendado para ${atualizado.nome} em ${input.data}`)
+            ? jsonResult(`Follow-up agendado para ${atualizado.nome} em ${input.data as string}`)
             : jsonResult("Lead não encontrado.");
         }
         return jsonResult("Uso: acao='agendar' com id e data, ou acao='listar'.");
@@ -254,7 +254,7 @@ export function createDashboardTool(): AnyAgentTool {
         const { ImoveisStore } = await import("../imoveis/store.js");
         const imStore = new ImoveisStore(`${resolveStateDir()}/data/corretorai.db`);
         const imoveisPorStatus = imStore.contarPorStatus();
-        const totalImoveis = Object.values(imoveisPorStatus).reduce((a, b) => a + b, 0);
+        const _totalImoveis = Object.values(imoveisPorStatus).reduce((a, b) => a + b, 0);
         imStore.close();
 
         const linhas = [

@@ -274,7 +274,7 @@ export class ImoveisStore {
       id,
       criadoEm: existente.criadoEm,
       atualizadoEm: new Date().toISOString(),
-      endereco: { ...existente.endereco, ...(dados.endereco ?? {}) },
+      endereco: { ...existente.endereco, ...dados.endereco },
     };
 
     const row = toRow(atualizado);

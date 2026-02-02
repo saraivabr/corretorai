@@ -6,6 +6,11 @@ import { requireActivePluginRegistry } from "../plugins/runtime.js";
 // register the plugin in its extension entrypoint and keep protocol IDs in sync.
 export const CHAT_CHANNEL_ORDER = [
   "whatsapp",
+  "telegram",
+  "discord",
+  "slack",
+  "signal",
+  "imessage",
 ] as const;
 
 export type ChatChannelId = (typeof CHAT_CHANNEL_ORDER)[number];
@@ -16,7 +21,7 @@ export const DEFAULT_CHAT_CHANNEL: ChatChannelId = "whatsapp";
 
 export type ChatChannelMeta = ChannelMeta;
 
-const WEBSITE_URL = "https://corretorai.com.br";
+const _WEBSITE_URL = "https://corretorai.com.br";
 
 const CHAT_CHANNEL_META: Record<ChatChannelId, ChannelMeta> = {
   whatsapp: {
@@ -28,6 +33,56 @@ const CHAT_CHANNEL_META: Record<ChatChannelId, ChannelMeta> = {
     docsLabel: "whatsapp",
     blurb: "principal canal de atendimento — conecte via QR code.",
     systemImage: "message",
+  },
+  telegram: {
+    id: "telegram",
+    label: "Telegram",
+    selectionLabel: "Telegram (Bot API)",
+    detailLabel: "Telegram Bot",
+    docsPath: "/channels/telegram",
+    docsLabel: "telegram",
+    blurb: "canal disponível via Bot API.",
+    systemImage: "paperplane",
+  },
+  discord: {
+    id: "discord",
+    label: "Discord",
+    selectionLabel: "Discord (Bot API)",
+    detailLabel: "Discord Bot",
+    docsPath: "/channels/discord",
+    docsLabel: "discord",
+    blurb: "canal disponível via Bot API.",
+    systemImage: "bubble.left.and.bubble.right",
+  },
+  slack: {
+    id: "slack",
+    label: "Slack",
+    selectionLabel: "Slack (Socket Mode)",
+    detailLabel: "Slack Bot",
+    docsPath: "/channels/slack",
+    docsLabel: "slack",
+    blurb: "canal disponível via Socket Mode.",
+    systemImage: "number",
+  },
+  signal: {
+    id: "signal",
+    label: "Signal",
+    selectionLabel: "Signal (signal-cli)",
+    detailLabel: "Signal REST",
+    docsPath: "/channels/signal",
+    docsLabel: "signal",
+    blurb: "canal disponível via signal-cli.",
+    systemImage: "antenna.radiowaves.left.and.right",
+  },
+  imessage: {
+    id: "imessage",
+    label: "iMessage",
+    selectionLabel: "iMessage (imsg)",
+    detailLabel: "iMessage",
+    docsPath: "/channels/imessage",
+    docsLabel: "imessage",
+    blurb: "canal disponível (macOS).",
+    systemImage: "message.fill",
   },
 };
 
